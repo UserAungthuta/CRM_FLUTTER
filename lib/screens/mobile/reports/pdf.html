@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Report PDF</title>
+    <style type="text/css">
+        * {
+            color: #040404;
+        }
+
+        .title {
+            text-align: center;
+        }
+
+        .title h2 {
+            font-size: 14px;
+        }
+
+        .report-container {
+            font-size: 10px;
+            width: 700px;
+            /* Dompdf often works better with fixed widths for layout */
+            padding: 0;
+            margin: 0 auto;
+            /* Center the container */
+        }
+
+        .header {
+            margin-bottom: 20px;
+            overflow: hidden;
+            height:60px;
+            /* For float clearing */
+        }
+
+        .header .logo {
+            float: left;
+            width: 100px;
+        }
+
+        .header .info {
+            float: right;
+            font-size: 12px;
+            line-height: 25px;
+            padding-bottom: 10px;
+            width: calc(100% - 200px);
+            height:30px;
+            /* Adjust width to fit next to logo */
+            text-align: right;
+        }
+
+        .info span {
+            margin-left: 15px;
+            font-weight: bold;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            /* Use 100% for responsiveness within the container */
+        }
+
+        tr {
+            border: 1px solid #000;
+            border-bottom: none;
+        }
+
+        .last {
+            border-bottom: 1px solid #000;
+        }
+
+        td {
+            padding: 16px 10px;
+            vertical-align: top;
+        }
+
+        td#date-left,
+        td#b-left {
+            border-left: 1px solid #000;
+        }
+
+        td#date {
+            border-left: 1px solid #000;
+            border-bottom: 1px solid #000;
+        }
+
+        tr#combine {
+            border-top: none;
+        }
+
+        th#title,th#title-last{
+            background-color: gainsboro;
+            font-weight: 800;
+            text-align: left;
+            padding: 16px 10px;
+        }
+        th#title-last{
+            border-left: 1px solid #000;
+        }
+        /* Removed unused tr#text rule */
+
+        b {
+            font-size: 11px;
+        }
+
+        .image-in-table {
+            max-width: 80px;
+            height: auto;
+            display: block;
+            /* Ensures it takes up its own line */
+            margin: 5px auto;
+            /* Centers image within cell */
+        }
+    </style>
+</head>
+
+<body>
+    <?php
+    // These variables are extracted from the $data array passed to buildReportHtml
+    // Make sure your getReportDetailsForPdf populates them correctly.
+    $report = $data['report'] ?? [];
+    $customer = $data['customer'] ?? [];
+    $engineer = $data['engineer'] ?? []; // This is the Team Leader from support_team
+    $champion = $data['champion'] ?? [];
+    $member = $data['member'] ?? [];
+
+    $root_causes = $data['root_cause'] ?? []; // Renamed from root_causes to root_cause as per your model
+    $corrective_actions = $data['corrective_action'] ?? []; // Renamed
+    $effective_actions = $data['effective_action'] ?? []; // Renamed
+    $preventions = $data['prevention'] ?? []; // Renamed
+    $suggestions = $data['suggestion'] ?? []; // Renamed
+    $report_media = $data['report_media'] ?? []; // Images directly related to the report
+
+    // Date variables (ensure these exist or provide sensible defaults)
+    $report_date_timestamp = strtotime($report['created_time'] ?? 'now');
+    $root_date_timestamp = strtotime($data['root_cause_time'] ?? $report['solved_time'] ?? 'now');
+    $correct_date_timestamp = strtotime($data['corrective_action_time'] ?? $report['solved_time'] ?? 'now');
+    $effective_date_timestamp = strtotime($data['effective_action_time'] ?? $report['completed_time'] ?? 'now');
+    $prevention_date_timestamp = strtotime($data['prevention_time'] ?? $report['completed_time'] ?? 'now');
+
+    $report_id = $report['report_index'] ?? 'N/A';
+
+    // IMPORTANT: Ensure $data['pick'] and $data['admin'] are passed from your PHP controller
+    $pick = $data['pick'] ?? [];
+    $admin = $data['admin'] ?? [];
+    ?>
+
+    <div class="header">
+        <div class="logo"><img src="https://testing.rehlkocustomercare.com/api/public/logo/logowtext.png" width="100"
+                alt="Company Logo"></div>
+        <div class="info">
+            <span>Address : 7 Jurong Pier Road, Singapore, 619159</span><br>
+            <span>Mail :admin@rehlkocustomercare.com</span><br>
+            <span>Phone : 096489079</span>
+        </div>
+        <div class="title">
+            <h2> Field Service Report - <?= $report_id; ?> </h2>
+        </div>
+    </div>
+    <div class="report-container">
+        <table>
+            <tr>
+                <th id="title"><span>Client Name </span></th>
+                <th id="title-last"><span>Name </span></th>
+            </tr>
+            <tr id="combine">
+                <td><span><b><?= $customer['fullname'] ?? 'N/A'; ?></b></span></td>
+                <td>
+                    <table>
+                        <tr>
+                        Written By : <?= $report['report_engineer_name'] ?? 'N/A'; ?>
+                    </tr>
+                    <tr>
+                        Approved By : <?= $report['supervisor_name'] ?? 'N/A'; ?>
+                    </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr id="combine">
+                <td><span>Name of Customer/ Vendor / Dept : <?= $customer['fullname'] ?? 'N/A'; ?></span></td>
+                <td></td>
+            </tr>
+            <tr id="combine" class="last">
+                <td><span><b>Problem</b></span></td>
+                <td></td>
+            </tr>
+        </table>
+        <table>
+            <tr class="last">
+                <td><span><?= $report['problem_issue'] ?? 'N/A'; ?></span></td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td><span style="font-weight:bold;font-size:12px;">Discipline 1 Use Team Approach </span></td>
+                <td></td>
+                <td id="b-left"><span>Date : <?= date("d-M-y", $root_date_timestamp); ?></span></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td id="b-left"><span>Contact </span></td>
+                <td id="b-left"><span>Telephone </span></td>
+            </tr>
+            <tr>
+                <td><span>Team Leader</span></td>
+                <td id="b-left"><span><?= $engineer['fullname'] ?? 'N/A'; ?> </span></td>
+                <td id="b-left"><span><?= $engineer['email'] ?? 'N/A'; ?></span></td>
+                <td id="b-left">
+                    <?php if (!empty($engineer['phone'])) { ?> <span><?= $engineer['phone']; ?> (Mobile)</span>
+                    <?php } ?>
+                    <?php /* if($engineer['office'] != NULL ){?> <br><br><span><?= $engineer['office'];?>(Office) </span><?php } */ ?>
+                </td>
+            </tr>
+            <tr>
+                <td><span>Champion</span></td>
+                <td id="b-left"><span><?= $champion['fullname'] ?? 'N/A'; ?> </span></td>
+                <td id="b-left"><span><?= $champion['email'] ?? 'N/A'; ?></span></td>
+                <td id="b-left">
+                    <?php if (!empty($champion['phone'])) { ?> <span><?= $champion['phone']; ?> (Mobile)</span>
+                    <?php } ?>
+                </td>
+            </tr>
+            <tr class="last">
+                <td><span>Members</span></td>
+                <td id="b-left"><span><?= $member['fullname'] ?? 'N/A'; ?> </span></td>
+                <td id="b-left"><span><?= $member['email'] ?? 'N/A'; ?></span></td>
+                <td id="b-left">
+                    <?php if (!empty($member['phone'])) { ?> <span><?= $member['phone']; ?> (Mobile)</span>
+                    <?php } ?>
+                </td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td><span style="font-weight:bold;font-size:12px;">Discipline 2 Describe the Problem </span></td>
+                <td id="b-left"><span>Date : <?= date("d-M-Y", $report_date_timestamp); ?></span></td>
+            </tr>
+            <tr class="last">
+                <td>
+                    <?php
+                    // Display the first image from report_media if available and it's an image
+                    $displayed_report_image = false;
+                    foreach ($report_media as $media_item) {
+                        if ($media_item['media_type'] === 'image' && !empty($media_item['media_path'])) {
+                            $imagePath = 'https://testing.rehlkocustomercare.com/api/' . $media_item['media_path'];
+                            echo '<img class="image-in-table" src="' . htmlspecialchars($imagePath) . '">';
+                        }
+                    }
+                    
+                    ?>
+                </td>
+                <td id="b-left"><span><?= $report['problem_issue'] ?? 'N/A'; ?></span></td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td><span style="font-weight:bold;font-size:12px;">Discipline 3 Implement and Verify Containment Action
+                    </span></td>
+                <td></td>
+                <td id="b-left"><span>Date : <?= date("d-M-Y", $root_date_timestamp); ?></span></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td><span>Action</span></td>
+                <td id="b-left"><span>Who</span></td>
+                <td id="b-left"><span>When </span></td>
+                <td id="b-left"><span>Status </span></td>
+            </tr>
+            <?php
+            // Assuming 'containment_actions' will be populated from root_cause for now,
+            // or you'll add a specific table for it.
+            // For now, using root_cause as per your original template's loop for Discipline 3.
+            if (!empty($root_causes)) {
+                foreach ($root_causes as $root_search) {
+                    // Engineer for this specific root cause (if different from main engineer)
+                    // You might need to fetch this engineer's details if root_cause has engineer_id
+                    // For simplicity, we'll assume the main engineer for now unless you pass more data
+                    $current_engineer_name = $engineer['fullname'] ?? 'N/A'; // Default to main engineer
+                    if (isset($root_search['engineer_id']) && $root_search['engineer_id'] != ($engineer['id'] ?? null)) {
+                        // Logic to fetch specific engineer for this root_cause if needed
+                        // For simplicity, we'll assume the main engineer for now unless you pass more data
+                    }
+            ?>
+                    <tr class="last">
+                        <td><span><?= $root_search['root_cause_title'] ?? 'N/A'; ?></span></td>
+                        <td id="b-left"><span><?= $current_engineer_name; ?></span></td>
+                        <td id="b-left"><span><?= date("d-M-y", strtotime($root_search['root_cause_time'] ?? $root_date_timestamp)); ?></span></td>
+                        <td id="b-left"><span>Complete </span></td>
+                    </tr>
+                <?php
+                }
+            } else { ?>
+                <tr class="last">
+                    <td colspan="4"><span>No containment actions recorded.</span></td>
+                </tr>
+            <?php } ?>
+        </table>
+        <table>
+            <tr>
+                <td><span style="font-weight:bold;font-size:12px;">Discipline 4 Problem Analysis </span></td>
+                <td id="b-left"><span>Date : <?= date("d-M-Y", $root_date_timestamp); ?></span></td>
+            </tr>
+            <?php
+            if (!empty($root_causes)) {
+                foreach ($root_causes as $root_search) { ?>
+                    <tr class="last">
+                        <td><span style="padding:10px;width: 100%;"><?= $root_search['root_cause_title'] ?? 'N/A'; ?></span></td>
+                        <td id="b-left">
+                            <?php
+                            $imagePath = 'https://testing.rehlkocustomercare.com/api/'. ($root_search['root_cause_media_path'] ?? '');
+                            if (!empty($root_search['root_cause_media_path'])) { ?>
+                                <img class="image-in-table" src="<?= htmlspecialchars($imagePath)?>">
+                            <?php } else { ?>
+                                <span></span>
+                            <?php } ?>
+                        </td>
+                    </tr>
+                <?php
+                }
+            } else { ?>
+                <tr class="last">
+                    <td colspan="2"><span>No root cause analysis recorded.</span></td>
+                </tr>
+            <?php } ?>
+        </table>
+        <table>
+            <tr>
+                <td><span style="font-weight:bold;font-size:12px;">Discipline 5 Corrective Action Plan </span></td>
+                <td></td>
+                <td id="b-left"><span>Date : <?= date("d-M-Y", $correct_date_timestamp); ?></span></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td><span>Action</span></td>
+                <td id="b-left"><span>Who</span></td>
+                <td id="b-left"><span>When </span></td>
+                <td id="b-left"><span>Status </span></td>
+            </tr>
+            <?php
+            if (!empty($corrective_actions)) {
+                foreach ($corrective_actions as $ca) {
+                    $current_engineer_name = $engineer['fullname'] ?? 'N/A'; // Default to main engineer
+                ?>
+                    <tr class="last">
+                        <td><span><?= $ca['corrective_action_title'] ?? 'N/A'; ?></span></td>
+                        <td id="b-left"><span><?= $current_engineer_name; ?></span></td>
+                        <td id="b-left"><span><?= date("d-M-Y", strtotime($ca['corrective_action_time'] ?? $correct_date_timestamp)); ?></span></td>
+                        <td id="b-left"><span>Complete </span></td>
+                    </tr>
+                <?php
+                }
+            } else { ?>
+                <tr class="last">
+                    <td colspan="4"><span>No corrective actions recorded.</span></td>
+                </tr>
+            <?php } ?>
+        </table>
+        <table>
+            <tr>
+                <td><span style="font-weight:bold;font-size:12px;">Discipline 6 Verify the Effectiveness of Corrective
+                        Action </span></td>
+                <td></td>
+                <td id="b-left"><span>Date : <?= date("d-M-Y", $effective_date_timestamp); ?></span></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td><span>Action</span></td>
+                <td id="b-left"><span>Who</span></td>
+                <td id="b-left"><span>When </span></td>
+                <td id="b-left"><span>Status </span></td>
+            </tr>
+            <?php
+            if (!empty($effective_actions)) {
+                foreach ($effective_actions as $ea) {
+                    $current_engineer_name = $engineer['fullname'] ?? 'N/A'; // Default to main engineer
+                ?>
+                    <tr>
+                        <td><span><?= $ea['effective_action_title'] ?? 'N/A'; ?></span></td>
+                        <td id="b-left"><span><?= $current_engineer_name; ?></span></td>
+                        <td id="b-left"><span><?= date("d-M-y", strtotime($ea['effective_action_time'] ?? $effective_date_timestamp)); ?></span></td>
+                        <td id="b-left"><span>Complete </span></td>
+                    </tr>
+                <?php
+                }
+            } else { ?>
+                <tr>
+                    <td colspan="4"><span>No effective actions recorded.</span></td>
+                </tr>
+            <?php } ?>
+        </table>
+        <table>
+            <tr>
+                <td><span style="font-weight:bold;font-size:12px;">Discipline 7 Preventive Recurrence </span></td>
+                <td></td>
+                <td id="b-left"><span>Date : <?= date("d-M-Y", $prevention_date_timestamp); ?></span></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td><span>Action</span></td>
+                <td id="b-left"><span>Who</span></td>
+                <td id="b-left"><span>When </span></td>
+                <td id="b-left"><span>Status </span></td>
+            </tr>
+            <?php
+            if (!empty($preventions)) {
+                foreach ($preventions as $prev) {
+                    $current_engineer_name = $engineer['fullname'] ?? 'N/A'; // Default to main engineer
+                ?>
+                    <tr>
+                        <td><span><?= $prev['prevention_title'] ?? 'N/A'; ?></span></td>
+                        <td id="b-left"><span><?= $current_engineer_name; ?></span></td>
+                        <td id="b-left"><span><?= date("d-M-y", strtotime($prev['prevention_time'] ?? $prevention_date_timestamp)); ?></span></td>
+                        <td id="b-left"><span>Complete </span></td>
+                    </tr>
+                <?php
+                }
+            } else { ?>
+                <tr>
+                    <td colspan="4"><span>No prevention steps recorded.</span></td>
+                </tr>
+            <?php } ?>
+        </table>
+        <table>
+            <tr id="last">
+                <td>Prepared By - <?= $report['report_engineer_name'] ?? 'N/A'; ?><br><br>
+                    Date - <?= date("d-M-y", $report_date_timestamp); ?></td>
+                <td id="b-left">Approved By - <?= $report['supervisor_name'] ?? 'N/A'; ?><br><br>
+                    Date - <?= date("d-M-y", $report_date_timestamp); ?></td>
+            </tr>
+        </table>
+    </div>
+</body>
+
+</html>

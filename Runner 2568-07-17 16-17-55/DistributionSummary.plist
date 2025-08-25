@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>rehlko_customer_care.ipa</key>
+	<array>
+		<dict>
+			<key>architectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>buildNumber</key>
+			<string>1</string>
+			<key>certificate</key>
+			<dict>
+				<key>SHA1</key>
+				<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+				<key>dateExpires</key>
+				<string>17/7/2569 BE</string>
+				<key>type</key>
+				<string>Cloud Managed Apple Distribution</string>
+			</dict>
+			<key>embeddedBinaries</key>
+			<array>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1.0</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>App.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>1.0</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>DKImagePickerController.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>4.3.9</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>DKPhotoGallery.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.0.19</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1.0</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>Flutter.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>1.0</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>SDWebImage.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>5.21.1</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>SwiftyGif.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>5.4.5</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>file_picker.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.0.1</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>flutter_secure_storage.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>6.0.0</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>image_picker_ios.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.0.1</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>open_filex.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.0.2</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>path_provider_foundation.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.0.1</string>
+				</dict>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>1</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>F8971378FF9FF24513B53EDC40F1687F766828CF</string>
+						<key>dateExpires</key>
+						<string>17/7/2569 BE</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>name</key>
+					<string>shared_preferences_foundation.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>42N4T9NYV5</string>
+						<key>name</key>
+						<string>Aung Thuta</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.0.1</string>
+				</dict>
+			</array>
+			<key>entitlements</key>
+			<dict>
+				<key>application-identifier</key>
+				<string>42N4T9NYV5.com.rehlko.master.maven.rehlkoCustomerCare</string>
+				<key>com.apple.developer.team-identifier</key>
+				<string>42N4T9NYV5</string>
+				<key>get-task-allow</key>
+				<false/>
+			</dict>
+			<key>name</key>
+			<string>Runner.app</string>
+			<key>profile</key>
+			<dict>
+				<key>UUID</key>
+				<string>db8ac12a-f735-4486-88c2-cddde77e0c52</string>
+				<key>dateExpires</key>
+				<string>17/7/2569 BE</string>
+				<key>name</key>
+				<string>iOS Team Ad Hoc Provisioning Profile: com.rehlko.master.maven.rehlkoCustomerCare</string>
+			</dict>
+			<key>team</key>
+			<dict>
+				<key>id</key>
+				<string>42N4T9NYV5</string>
+				<key>name</key>
+				<string>Aung Thuta</string>
+			</dict>
+			<key>versionNumber</key>
+			<string>3.0.0</string>
+		</dict>
+	</array>
+</dict>
+</plist>

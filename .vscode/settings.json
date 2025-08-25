@@ -1,0 +1,4 @@
+{
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "dart.flutterSdkPath": "/opt/homebrew/Caskroom/flutter/3.29.3/flutter"
+}

@@ -1,0 +1,86 @@
+{
+  "project_info": {
+    "project_number": "28980358812",
+    "project_id": "rehlko-dd990",
+    "storage_bucket": "rehlko-dd990.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28980358812:android:8afc7e798fc49607ef0759",
+        "android_client_info": {
+          "package_name": "com.example.rehlko_customer_care_web_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8gBDjpiC0Gy9fLyCklUMLR-FoMCOZnek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28980358812:android:ff44c76642d75c2cef0759",
+        "android_client_info": {
+          "package_name": "com.example.temp_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8gBDjpiC0Gy9fLyCklUMLR-FoMCOZnek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28980358812:android:f30a0f61176ca388ef0759",
+        "android_client_info": {
+          "package_name": "com.rehlko.customer.carecom.rehlko.master.maven.rehlkoCustomerCare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8gBDjpiC0Gy9fLyCklUMLR-FoMCOZnek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28980358812:android:a943ba7fae0c4d17ef0759",
+        "android_client_info": {
+          "package_name": "com.rehlko.master.maven.testing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8gBDjpiC0Gy9fLyCklUMLR-FoMCOZnek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
