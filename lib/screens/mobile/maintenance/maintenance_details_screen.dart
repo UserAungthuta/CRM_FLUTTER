@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb; // Needed for web check
+import 'package:path_provider/path_provider.dart'; // Needed for file operations
+import 'dart:io'; // Needed for File class
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart'; // NEW: Import for SfPdfViewer
 
 import '../../../utils/shared_prefs.dart';
 import '../../../utils/api_config.dart';
-// Import the new maintenance creation screen
 import 'maintenance_create_screen.dart';
+import '../../../utils/file_saver.dart'; // Assume this exists for web/mobile file saving
 
 class MaintenancePlanHistoryScreen extends StatefulWidget {
   final String id;
@@ -22,8 +26,8 @@ class MaintenancePlanHistoryScreen extends StatefulWidget {
 
 class _MaintenancePlanHistoryScreenState
     extends State<MaintenancePlanHistoryScreen> {
-  // Change the future to hold a grouped map
   late Future<Map<String, List<Map<String, String>>>> _maintenanceHistoryFuture;
+  bool _isDownloadingPdf = false; // New state for PDF download
 
   @override
   void initState() {
@@ -90,6 +94,8 @@ class _MaintenancePlanHistoryScreenState
                     item['maintenance_type'] as String? ?? 'N/A',
                 'maintenance_check_user':
                     item['maintenance_check_user']?.toString() ?? 'N/A',
+                'checked_by_user_name':
+                    item['checked_by_user_name'] as String? ?? 'N/A', // NEW
                 'maintenance_date':
                     item['maintenance_date'] as String? ?? 'N/A',
                 'is_check': item['is_check']?.toString() ?? '0',
@@ -150,7 +156,6 @@ class _MaintenancePlanHistoryScreenState
         return;
       }
 
-      // Replace with your actual update endpoint
       final Uri uri =
           Uri.parse('${ApiConfig.baseUrl}/maintenance/update/$recordId');
 
@@ -165,7 +170,6 @@ class _MaintenancePlanHistoryScreenState
       print(uri);
       if (response.statusCode == 200) {
         _showSnackBar('Item checked successfully!');
-        // Refresh the UI to reflect the change
         setState(() {
           _maintenanceHistoryFuture = _fetchGroupedMaintenanceRecords();
         });
@@ -179,9 +183,84 @@ class _MaintenancePlanHistoryScreenState
     }
   }
 
+  /// NEW: Method to download the maintenance PDF.
+  Future<void> _downloadMaintenancePdf() async {
+    if (!mounted || _isDownloadingPdf || widget.id.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isDownloadingPdf = true;
+    });
+
+    try {
+      final String? token = await SharedPrefs.getToken();
+      if (token == null || token.isEmpty) {
+        _showSnackBar('Authentication token missing. Please log in again.',
+            color: Colors.red);
+        return;
+      }
+
+      final String planId = widget.id;
+      final Uri uri =
+          Uri.parse('${ApiConfig.baseUrl}/maintenance/download-pdf/$planId');
+
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final String fileName =
+            'maintenance_report_${widget.record['generator_serial_number'] ?? 'unknown'}.pdf';
+
+        final fileSaver = getFileSaver();
+        await fileSaver.savePdf(response.bodyBytes, fileName);
+
+        if (!kIsWeb) {
+          final directory = await getApplicationDocumentsDirectory();
+          final String filePath = '${directory.path}/$fileName';
+          if (mounted) {
+            _showSnackBar('PDF downloaded to: $filePath', color: Colors.green);
+            // Optionally, open the PDF using a viewer (like in report_complete_screen.dart)
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PdfViewerScreen(pdfPath: filePath),
+              ),
+            );
+          }
+        } else {
+          _showSnackBar('PDF download initiated.', color: Colors.green);
+        }
+      } else {
+        String errorMessage =
+            'Failed to download PDF. Status: ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['message'] != null) {
+            errorMessage = errorData['message'];
+          }
+        } catch (_) {}
+        _showSnackBar(errorMessage, color: Colors.red);
+      }
+    } on TimeoutException {
+      _showSnackBar('PDF download request timed out. Server not responding.',
+          color: Colors.red);
+    } catch (e) {
+      _showSnackBar('An error occurred during PDF download: ${e.toString()}',
+          color: Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloadingPdf = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Determine which "Create" buttons to show based on the widget.record flags
     final bool showMonthlyButton = widget.record['monthly'] == '1';
     final bool showQuarterlyButton = widget.record['quarterly'] == '1';
     final bool showAnnuallyButton = widget.record['annually'] == '1';
@@ -306,6 +385,31 @@ class _MaintenancePlanHistoryScreenState
               ),
             ),
           ),
+          // NEW: PDF Download Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: ElevatedButton.icon(
+              onPressed: _isDownloadingPdf ? null : _downloadMaintenancePdf,
+              icon: _isDownloadingPdf
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download),
+              label: Text(_isDownloadingPdf
+                  ? 'Downloading...'
+                  : 'Download Maintenance PDF'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                minimumSize: const Size.fromHeight(40), // Full width button
+              ),
+            ),
+          ),
           Expanded(
             child: FutureBuilder<Map<String, List<Map<String, String>>>>(
               future: _maintenanceHistoryFuture,
@@ -422,7 +526,7 @@ class _MaintenancePlanHistoryScreenState
                                     fontSize: 14, color: Colors.grey),
                               ),
                               Text(
-                                'Checked By User ID: ${recordsForTitle.first['maintenance_check_user'] ?? 'N/A'}',
+                                'Checked By: ${recordsForTitle.first['checked_by_user_name'] ?? 'N/A'}', // Use checked_by_user_name
                                 style: const TextStyle(
                                     fontSize: 14, color: Colors.grey),
                               ),
@@ -438,6 +542,26 @@ class _MaintenancePlanHistoryScreenState
           ),
         ],
       ),
+    );
+  }
+}
+
+// Assuming PdfViewerScreen and getFileSaver() are defined elsewhere in your project
+// or will be added. For web, PdfViewerScreen is not used.
+class PdfViewerScreen extends StatelessWidget {
+  final String pdfPath;
+
+  const PdfViewerScreen({super.key, required this.pdfPath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Maintenance PDF Viewer'),
+        backgroundColor: const Color(0xFF336EE5),
+        foregroundColor: Colors.white,
+      ),
+      body: SfPdfViewer.file(File(pdfPath)),
     );
   }
 }

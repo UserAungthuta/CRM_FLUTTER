@@ -68,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
       };
 
       if (response.statusCode == 200 && data['success'] == true) {
+        //print(data['token']);
         final user = User.fromJson(data['user']);
         final String token = data['token']?.toString() ?? '';
 
