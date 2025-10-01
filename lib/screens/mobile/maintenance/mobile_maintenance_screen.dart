@@ -3,11 +3,12 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:intl/intl.dart';
+import 'dart:io';
+
 import '../../../utils/shared_prefs.dart';
 import '../../../utils/api_config.dart';
 // These imports are placeholders. You must ensure these screens exist.
 import 'maintenance_read_screen.dart';
-import 'maintenance_details_screen.dart';
 
 enum MaintenanceView {
   list,
@@ -26,6 +27,7 @@ class MobileMaintenanceScreen extends StatefulWidget {
 class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
   final _formKey = GlobalKey<FormState>();
   late Future<List<Map<String, String>>> _maintenanceRecordsFuture;
+  late Future<List<Map<String, String>>> _customersFuture;
   MaintenanceView _currentView = MaintenanceView.list;
   Map<String, String>? _editingMaintenanceRecord;
   Map<String, String>? _selectedMaintenanceRecord;
@@ -43,12 +45,14 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
 
   bool _isLoading = false;
   String? _userRole;
+  String? _selectedFilter;
+  String? _selectedCustomerId;
 
   @override
   void initState() {
     super.initState();
     _fetchUserRole();
-    _fetchMaintenanceRecordsData();
+    _fetchInitialData();
   }
 
   @override
@@ -59,6 +63,11 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
     _maintenanceTypeController.dispose();
     _maintenanceDateController.dispose();
     super.dispose();
+  }
+
+  void _fetchInitialData() {
+    _customersFuture = _fetchUsers(roles: ['localcustomer', 'globalcustomer']);
+    _fetchMaintenanceRecordsData();
   }
 
   Future<void> _fetchUserRole() async {
@@ -88,7 +97,69 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
     );
   }
 
-  Future<List<Map<String, String>>> _fetchMaintenanceRecords() async {
+  Future<List<Map<String, String>>> _fetchUsers({List<String>? roles}) async {
+    try {
+      final String? token = await SharedPrefs.getToken();
+      if (token == null || token.isEmpty) {
+        _showSnackBar(
+            context, 'Authentication token missing. Please log in again.',
+            color: Colors.red);
+        return [];
+      }
+
+      final Uri uri = Uri.parse('${ApiConfig.baseUrl}/users/readall');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] is List) {
+          List<Map<String, String>> users = [];
+          for (var item in responseData['data']) {
+            if (item is Map<String, dynamic>) {
+              final userRole = item['role'] as String? ?? '';
+              if (roles == null || roles.contains(userRole)) {
+                users.add({
+                  'id': item['id']?.toString() ?? '',
+                  'username': item['username'] as String? ?? '',
+                  'role': userRole,
+                });
+              }
+            }
+          }
+          return users;
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
+    } on SocketException {
+      _showSnackBar(context, 'Network error. Check your internet connection.',
+          color: Colors.red);
+      return [];
+    } on TimeoutException {
+      _showSnackBar(context, 'Request timed out. Server not responding.',
+          color: Colors.red);
+      return [];
+    } on FormatException {
+      _showSnackBar(context, 'Invalid response format from server.',
+          color: Colors.red);
+      return [];
+    } catch (e) {
+      _showSnackBar(context, 'An unexpected error occurred: ${e.toString()}',
+          color: Colors.red);
+      return [];
+    }
+  }
+
+  Future<List<Map<String, String>>> _fetchMaintenanceRecords(
+      {String? customerId}) async {
     try {
       final String? token = await SharedPrefs.getToken();
       if (token == null || token.isEmpty) {
@@ -100,7 +171,18 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
         return [];
       }
 
-      final Uri uri = Uri.parse('${ApiConfig.baseUrl}/maintenance/readall');
+      final Map<String, dynamic> queryParameters = {};
+      if (_selectedFilter != null) {
+        queryParameters['type'] = _selectedFilter;
+      }
+      if (customerId != null && customerId.isNotEmpty) {
+        queryParameters['customer_id'] = customerId;
+      }
+
+      final Uri uri = Uri.parse('${ApiConfig.baseUrl}/maintenance/readall')
+          .replace(
+              queryParameters:
+                  queryParameters.isEmpty ? null : queryParameters);
 
       final response = await http.get(
         uri,
@@ -114,7 +196,7 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
           throw TimeoutException('Request timeout - Server not responding.');
         },
       );
-
+      //print(uri);
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] is List) {
@@ -128,6 +210,8 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
                 'monthly': item['monthly']?.toString() ?? 'N/A',
                 'quarterly': item['quarterly']?.toString() ?? 'N/A',
                 'annually': item['annually']?.toString() ?? 'N/A',
+                'maintenance_end_date':
+                    item['maintenance_end_date']?.toString() ?? 'N/A',
                 'maintenance_check_user':
                     item['maintenance_check_user']?.toString() ?? 'N/A',
                 'check_user_name': item['check_user_name'] as String? ?? 'N/A',
@@ -315,14 +399,65 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Maintenance Records',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.blueGrey[700],
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [],
           ),
+        ),
+        FutureBuilder<List<Map<String, String>>>(
+          future: _customersFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: LinearProgressIndicator(),
+              );
+            } else if (snapshot.hasError) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text('Error loading customers: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red)),
+              );
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text('No customers available for filtering.'),
+              );
+            } else {
+              final customers = snapshot.data!;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _selectedCustomerId,
+                  decoration: const InputDecoration(
+                    labelText: 'Filter by Customer',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  hint: const Text('Select a Customer'),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All Customers'),
+                    ),
+                    ...customers.map((customer) {
+                      return DropdownMenuItem<String>(
+                        value: customer['id'],
+                        child: Text(customer['username']!),
+                      );
+                    }),
+                  ],
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedCustomerId = newValue;
+                      _maintenanceRecordsFuture = _fetchMaintenanceRecords(
+                          customerId: _selectedCustomerId);
+                    });
+                  },
+                ),
+              );
+            }
+          },
         ),
         Expanded(
           child: Padding(
@@ -385,11 +520,17 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
                                 style: const TextStyle(
                                     fontSize: 14, color: Colors.grey),
                               ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Maintenance End Date: ${DateFormat('dd/MM/yyyy').format(DateTime.parse(record['maintenance_end_date'] ?? ''))}',
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.grey),
+                              ),
                               const SizedBox(height: 8),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  TextButton(
+                                  ElevatedButton(
                                     onPressed: () {
                                       Navigator.push(
                                         context,
@@ -403,27 +544,15 @@ class _MobileMaintenanceScreenState extends State<MobileMaintenanceScreen> {
                                       ).then((_) =>
                                           _fetchMaintenanceRecordsData());
                                     },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(4)),
+                                    ),
                                     child: const Text('View'),
                                   ),
-                                  const SizedBox(width: 8),
-                                  if (_userRole != 'localcustomer' &&
-                                      _userRole != 'globalcustomer')
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                MaintenancePlanHistoryScreen(
-                                              id: record['id']!,
-                                              record: record,
-                                            ),
-                                          ),
-                                        ).then((_) =>
-                                            _fetchMaintenanceRecordsData());
-                                      },
-                                      child: const Text('Edit'),
-                                    ),
                                 ],
                               )
                             ],

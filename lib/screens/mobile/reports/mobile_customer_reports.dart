@@ -1,10 +1,8 @@
 // lib/screens/customer/mobile_customer_report_screen.dart
+
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import '../../../service/report_service.dart';
-
 import '../../../utils/shared_prefs.dart';
 import 'report_details_screen.dart';
 import 'report_complete_screen.dart';
@@ -29,13 +27,11 @@ class _MobileCustomerReportScreenState
   ReportView _currentView = ReportView.list;
   final ReportService _reportService = ReportService();
 
-  // Controllers for the forms (create)
   String? _selectedReportType = 'normal';
   String? _selectedGeneratorSerialNumber;
   final TextEditingController _problemIssueController = TextEditingController();
   final TextEditingController _remarksController = TextEditingController();
 
-  // For media attachments
   List<XFile>? _reportImages;
   XFile? _reportVideo;
   final ImagePicker _picker = ImagePicker();
@@ -97,18 +93,15 @@ class _MobileCustomerReportScreenState
     });
 
     try {
-      final List<File> imageFiles =
-          _reportImages?.map((xfile) => File(xfile.path)).toList() ?? [];
-      final File? videoFile =
-          _reportVideo != null ? File(_reportVideo!.path) : null;
-
+      // The `ReportService` now handles the conversion from `XFile`
+      // to the appropriate platform-specific file type.
       await _reportService.createReport(
         reportType: _selectedReportType!,
         generatorSerialNumber: _selectedGeneratorSerialNumber!,
         problemIssue: _problemIssueController.text.trim(),
         remarks: _remarksController.text.trim(),
-        imageFiles: imageFiles,
-        videoFile: videoFile,
+        imageFiles: _reportImages, // Pass XFile objects directly
+        videoFile: _reportVideo, // Pass XFile objects directly
         customerId: userId,
       );
 
@@ -117,7 +110,7 @@ class _MobileCustomerReportScreenState
       _clearControllers();
       setState(() {
         _currentView = ReportView.list;
-        _fetchInitialData(); // Refresh list
+        _fetchInitialData();
       });
     } catch (e) {
       _showSnackBar(context, e.toString(), color: Colors.red);
@@ -401,7 +394,6 @@ class _MobileCustomerReportScreenState
                   maxLines: 3,
                 ),
                 const SizedBox(height: 16),
-                // --- Media Attachment Fields ---
                 ElevatedButton.icon(
                   onPressed: _pickImages,
                   icon: const Icon(Icons.image),
@@ -425,7 +417,6 @@ class _MobileCustomerReportScreenState
                   ),
                 ),
                 const SizedBox(height: 30),
-                // --- End Media Attachment Fields ---
                 ElevatedButton(
                   onPressed: _isSubmitting ? null : _createReport,
                   style: ElevatedButton.styleFrom(
@@ -489,7 +480,7 @@ class _MobileCustomerReportScreenState
       case ReportView.create:
         return _buildCreateContent();
       default:
-        return _buildListContent(); // Fallback to list view
+        return _buildListContent();
     }
   }
 }

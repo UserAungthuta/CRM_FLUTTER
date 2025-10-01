@@ -21,14 +21,8 @@ class _MobileCustomerDashboardScreenState
     extends State<MobileCustomerDashboardScreen> {
   int _selectedIndex = 0; // State to manage the selected tab index
 
-  // State variables for Quick Stats data
-  // Initialize with default values so UI can render immediately
-  Map<String, dynamic> _quickStatsData = {
-    'myReports': 'N/A',
-    'activeProducts': 'N/A',
-    'serviceRequests': 'N/A',
-  };
-  bool _quickStatsLoading = true; // Still used internally for fetch logic
+  // Use a Future variable to hold the quick stats data
+  late Future<Map<String, dynamic>> _quickStatsFuture;
 
   // List of widgets for each tab in the BottomNavigationBar
   late final List<Widget> _widgetOptions;
@@ -36,12 +30,16 @@ class _MobileCustomerDashboardScreenState
   @override
   void initState() {
     super.initState();
+    // Initialize the future when the widget is first created
+    _quickStatsFuture = _fetchQuickStats();
+    // Initialize _widgetOptions with all 5 corresponding contents
     _widgetOptions = <Widget>[
       _buildHomeContent(), // Index 0: Home (Customer Quick Stats)
-      _buildHomeContent(), // Index 1: Customer's Products (Assigned Products)
-      _buildHomeContent(), // Index 4: Profile
+      _buildProductsContent(), // Index 1: Customer's Products
+      _buildReportsContent(), // Index 2: Reports
+      _buildPlaceholderContent('Settings Page'), // Index 3: Settings
+      _buildPlaceholderContent('Profile Page'), // Index 4: Profile
     ];
-    _fetchQuickStats(); // Call to fetch quick stats when the widget initializes
   }
 
   // Helper method to show a SnackBar message
@@ -72,7 +70,7 @@ class _MobileCustomerDashboardScreenState
     // Update snackbar messages for each specific tab
     switch (index) {
       case 0: // Home
-        _fetchQuickStats(); // Re-fetch quick stats for Home tab
+        _quickStatsFuture = _fetchQuickStats();
         break;
       case 1: // Products (Assigned Products for customer)
         Navigator.pushNamed(context,
@@ -93,23 +91,14 @@ class _MobileCustomerDashboardScreenState
   }
 
   /// Fetches quick statistics data from the backend API for a customer.
-  Future<void> _fetchQuickStats() async {
-    setState(() {
-      _quickStatsLoading = true; // Set loading state to true
-    });
-
+  Future<Map<String, dynamic>> _fetchQuickStats() async {
     try {
       final String? token =
           await SharedPrefs.getToken(); // Retrieve authentication token
       final int? userId = await SharedPrefs.getUserId(); // Retrieve user ID
       if (token == null || token.isEmpty || userId == null) {
-        _showSnackBar(context,
-            'Authentication token or User ID missing. Please log in again.',
-            color: Colors.red);
-        setState(() {
-          _quickStatsLoading = false;
-        });
-        return;
+        throw Exception(
+            'Authentication token or User ID missing. Please log in again.');
       }
 
       final response = await http.get(
@@ -130,46 +119,27 @@ class _MobileCustomerDashboardScreenState
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] is Map<String, dynamic>) {
-          setState(() {
-            _quickStatsData = data['data']; // Update quick stats data
-          });
+          return Map<String, dynamic>.from(data['data']);
         } else {
-          _showSnackBar(
-              context,
-              data['message'] ??
-                  'Failed to load quick stats. Invalid data format.',
-              color: Colors.red);
+          throw Exception(data['message'] ??
+              'Failed to load quick stats. Invalid data format.');
         }
       } else {
         final errorData = json.decode(response.body);
-        _showSnackBar(context,
-            errorData['message'] ?? 'Failed to load quick stats. Server error.',
-            color: Colors.red);
+        throw Exception(errorData['message'] ??
+            'Failed to load quick stats. Server error.');
       }
-    } on SocketException catch (e) {
-      print('SocketException (Quick Stats): $e');
-      _showSnackBar(context,
-          'Network error while fetching quick stats. Check your internet connection.',
-          color: Colors.red);
-    } on TimeoutException catch (e) {
-      print('TimeoutException (Quick Stats): $e');
-      _showSnackBar(
-          context, 'Quick stats request timed out. Server is not responding.',
-          color: Colors.red);
-    } on FormatException catch (e) {
-      print('FormatException (Quick Stats): $e');
-      _showSnackBar(
-          context, 'Invalid response format for quick stats from server.',
-          color: Colors.red);
+    } on SocketException {
+      throw Exception(
+          'Network error while fetching quick stats. Check your internet connection.');
+    } on TimeoutException {
+      throw Exception(
+          'Quick stats request timed out. Server is not responding.');
+    } on FormatException {
+      throw Exception('Invalid response format for quick stats from server.');
     } catch (e) {
-      print('General Exception (Quick Stats): $e');
-      _showSnackBar(context,
-          'An unexpected error occurred while fetching quick stats: ${e.toString()}',
-          color: Colors.red);
-    } finally {
-      setState(() {
-        _quickStatsLoading = false; // Always set loading to false
-      });
+      throw Exception(
+          'An unexpected error occurred while fetching quick stats: ${e.toString()}');
     }
   }
 
@@ -284,42 +254,60 @@ class _MobileCustomerDashboardScreenState
                   ],
                 ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10.0,
-                  runSpacing: 10.0,
-                  children: [
-                    _buildStatCard(
-                        context,
-                        'Total Reports',
-                        _quickStatsData['myReports']?.toString() ?? 'N/A',
-                        Icons.assignment, () {
-                      Navigator.pushNamed(context, '/mobile_customer_reports');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'My Products',
-                        _quickStatsData['activeProducts']?.toString() ?? 'N/A',
-                        Icons.category, () {
-                      Navigator.pushNamed(context, '/mobile_assigned_products');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Total Maintenance',
-                        _quickStatsData['totalMaintenance']?.toString() ??
-                            'N/A',
-                        Icons.build, () {
-                      Navigator.pushNamed(context, '/mobile_maintenance');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Service Requests',
-                        _quickStatsData['serviceRequests']?.toString() ?? 'N/A',
-                        Icons.build, () {
-                      // Assuming service requests are part of reports, navigate to reports or a filtered view
-                      Navigator.pushNamed(
-                          context, '/mobile_customer_unsolved_reports');
-                    }),
-                  ],
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _quickStatsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (snapshot.hasData) {
+                      final quickStatsData = snapshot.data!;
+                      return Wrap(
+                        spacing: 10.0,
+                        runSpacing: 10.0,
+                        children: [
+                          _buildStatCard(
+                              context,
+                              'Total Reports',
+                              quickStatsData['myReports']?.toString() ?? 'N/A',
+                              Icons.assignment, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_customer_reports');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'My Products',
+                              quickStatsData['activeProducts']?.toString() ??
+                                  'N/A',
+                              Icons.category, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_assigned_products');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Total Maintenance',
+                              quickStatsData['totalMaintenance']?.toString() ??
+                                  'N/A',
+                              Icons.build, () {
+                            Navigator.pushNamed(context, '/mobile_maintenance');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Service Requests',
+                              quickStatsData['serviceRequests']?.toString() ??
+                                  'N/A',
+                              Icons.build, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_customer_unsolved_reports');
+                          }),
+                        ],
+                      );
+                    } else {
+                      return const Center(
+                          child: Text('No quick stats data available.'));
+                    }
+                  },
                 ),
                 const SizedBox(height: 20),
               ],
@@ -330,11 +318,20 @@ class _MobileCustomerDashboardScreenState
     );
   }
 
-  // Placeholder for customer's products content (assigned products)
   Widget _buildProductsContent() {
     return const Center(
       child: Text(
         'Your Assigned Products will be listed here!',
+        style: TextStyle(fontSize: 20, color: Colors.black54),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildReportsContent() {
+    return const Center(
+      child: Text(
+        'Your Reports will be listed here!',
         style: TextStyle(fontSize: 20, color: Colors.black54),
         textAlign: TextAlign.center,
       ),
@@ -390,7 +387,12 @@ class _MobileCustomerDashboardScreenState
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _fetchQuickStats,
+        onRefresh: () {
+          setState(() {
+            _quickStatsFuture = _fetchQuickStats();
+          });
+          return _quickStatsFuture.then((value) => value);
+        },
         child: SingleChildScrollView(
           child: _widgetOptions.elementAt(_selectedIndex),
         ),
@@ -402,14 +404,20 @@ class _MobileCustomerDashboardScreenState
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons
-                .category), // Changed from people_alt to category for products
+            icon: Icon(Icons.category),
             label: 'Products',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons
-                .assignment), // Changed from bar_chart to assignment for reports
+            icon: Icon(Icons.assignment),
             label: 'Reports',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
         currentIndex: _selectedIndex,

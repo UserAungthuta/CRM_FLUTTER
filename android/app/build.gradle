@@ -1,71 +1,83 @@
+// The plugins block must be the absolute first block in the file.
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+// FIX: Logic to read local.properties for the storeFile path
 def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
+def localPropertiesFile = file('../local.properties') // Reads from android/local.properties
 if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
-        localProperties.load(reader)
-    }
+    localPropertiesFile.withInputStream { localProperties.load(it) }
 }
 
-def flutterRoot = localProperties.getProperty('flutter.sdk')
-if (flutterRoot == null) {
-    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
-}
-
-def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-if (flutterVersionCode == null) {
-    flutterVersionCode = '1'
-}
-
-def flutterVersionName = localProperties.getProperty('flutter.versionName')
-if (flutterVersionName == null) {
-    flutterVersionName = '1.0'
-}
-
-apply plugin: 'com.android.application'
-// START: FlutterFire Configuration
-apply plugin: 'com.google.gms.google-services'
-// END: FlutterFire Configuration
-apply plugin: 'kotlin-android'
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    compileSdkVersion 34 // Use a recent version, e.g., 34
-    
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
+    namespace = "com.rehlko.master.maven.rehlko_customer_care"
+    compileSdk flutter.compileSdkVersion 
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+        coreLibraryDesugaringEnabled true 
     }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+    
+    // START: Hybrid Signing Configuration
+    // START: Hybrid Signing Configuration
+    // START: Failsafe Signing Configuration
+    signingConfigs {
+        create("release") {
+            def storePath = localProperties.getProperty('storeFile')
+            
+            // 1. Critical check for null path
+            if (storePath == null) {
+                throw new GradleException("FATAL ERROR: 'storeFile' property is missing from local.properties.")
+            }
+
+            // 2. Direct assignment using file() for path and explicit String casting for passwords/alias
+            storeFile = file(storePath)
+            storePassword = localProperties.getProperty('storePassword') as String
+            keyAlias = localProperties.getProperty('keyAlias') as String
+            keyPassword = localProperties.getProperty('keyPassword') as String
+            
+            // 3. Final check: if Gradle couldn't load all properties, throw a clear error
+            if (storePassword == null || keyAlias == null || keyPassword == null) {
+                throw new GradleException("FATAL ERROR: One or more signing passwords/alias are null. Check local.properties.")
+            }
+
+            // 4. Final safety check: throw an exception if the file does not exist.
+            if (!storeFile.exists()) {
+                 throw new GradleException("Release signing FAILED: Keystore file not found at path: $storePath")
+            }
+        }
+    }
+    // ... rest of your build.gradle continues below ...
 
     defaultConfig {
-        applicationId "com.example.rehlko_customer_care_web_app"
-        minSdkVersion 21
-        targetSdkVersion 34
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
-    }
-
-    signingConfigs {
-        release {
-            storeFile file("upload-keystore.jks")
-            storePassword localProperties.getProperty("storePassword")
-            keyAlias localProperties.getProperty("keyAlias")
-            keyPassword localProperties.getProperty("keyPassword")
-        }
+        applicationId = "com.rehlko.master.maven.rehlko_customer_care"
+        minSdk flutter.minSdkVersion
+        targetSdk flutter.targetSdkVersion
+        versionCode flutter.versionCode
+        versionName flutter.versionName
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
+            signingConfig signingConfigs.getByName("release") 
         }
     }
 }
 
 flutter {
-    source '../..'
+    source = "../.."
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    // Add your other dependencies here
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 }

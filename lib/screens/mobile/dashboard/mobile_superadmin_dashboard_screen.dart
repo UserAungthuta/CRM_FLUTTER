@@ -19,24 +19,10 @@ class MobileSuperAdminDashboardScreen extends StatefulWidget {
 
 class _MobileSuperAdminDashboardScreenState
     extends State<MobileSuperAdminDashboardScreen> {
-  int _selectedIndex =
-      0; // State to manage the selected tab index // State variable to hold the user data
+  int _selectedIndex = 0; // State to manage the selected tab index
 
-  // State variable to hold the user role
-
-  // State variables for Quick Stats data
-  // Initialize with default values so UI can render immediately
-  Map<String, dynamic> _quickStatsData = {
-    'totalUsers': 'N/A',
-    'totalReports': 'N/A',
-    'solvedReports': 'N/A',
-    'unsolvedReports': 'N/A',
-    'totalProducts': 'N/A',
-    'totalMaintenance': 'N/A',
-    'customerProducts': 'N/A',
-    'configWarningTime': 'N/A', // Keep this in data even if not displayed
-  };
-  bool _quickStatsLoading = true; // Still used internally for fetch logic
+  // Use a Future variable to hold the quick stats data
+  late Future<Map<String, dynamic>> _quickStatsFuture;
 
   // List of widgets for each tab in the BottomNavigationBar
   late final List<Widget> _widgetOptions;
@@ -44,6 +30,8 @@ class _MobileSuperAdminDashboardScreenState
   @override
   void initState() {
     super.initState();
+    // Initialize the future when the widget is first created
+    _quickStatsFuture = _fetchQuickStats();
     // Initialize _widgetOptions with all 6 corresponding contents
     _widgetOptions = <Widget>[
       _buildHomeContent(), // Index 0: Home
@@ -52,7 +40,6 @@ class _MobileSuperAdminDashboardScreenState
       _buildReportsContent(), // Index 3: Reports
       _buildSettingContent(), // Index 4: Settings
     ];
-    _fetchQuickStats(); // Call to fetch quick stats when the widget initializes
   }
 
   // Helper method to show a SnackBar message
@@ -83,8 +70,9 @@ class _MobileSuperAdminDashboardScreenState
     // Update snackbar messages for each specific tab
     switch (index) {
       case 0:
-        // When Home tab is selected, re-fetch quick stats to ensure data is fresh
-        _fetchQuickStats();
+        // Re-fetch quick stats on refresh for the home screen
+        _quickStatsFuture = _fetchQuickStats();
+        _showSnackBar(context, 'Home tab selected!');
         break;
       case 1:
         _showSnackBar(context, 'Users tab selected!');
@@ -103,101 +91,54 @@ class _MobileSuperAdminDashboardScreenState
   }
 
   /// Fetches quick statistics data from the backend API.
-  Future<void> _fetchQuickStats() async {
-    setState(() {
-      _quickStatsLoading = true; // Set loading state to true
-      // No longer explicitly clearing _quickStatsData to prevent "N/A" flicker
-    });
-
+  /// Returns a Future<Map<String, dynamic>>
+  Future<Map<String, dynamic>> _fetchQuickStats() async {
     try {
       final String? token = await SharedPrefs.getToken();
 
       // Retrieve authentication token
       if (token == null || token.isEmpty) {
-        _showSnackBar(
-            context, 'Authentication token missing. Please log in again.',
-            color: Colors.red);
-        setState(() {
-          _quickStatsLoading = false;
-        });
-        return;
+        throw Exception('Authentication token missing. Please log in again.');
       }
 
-      //print(
-      //  'Attempting to fetch quick stats from: ${ApiConfig.baseUrl}/quickstats/admin');
-
       final response = await http.get(
-        Uri.parse(
-            '${ApiConfig.baseUrl}/quickstats/admin'), // Corrected endpoint based on backend routing
+        Uri.parse('${ApiConfig.baseUrl}/quickstats/admin'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization':
-              'Bearer $token', // Add Authorization header for authenticated requests
+          'Authorization': 'Bearer $token',
         },
       ).timeout(
-        const Duration(seconds: 5), // Reduced timeout to 5 seconds
+        const Duration(seconds: 5),
         onTimeout: () {
           throw TimeoutException(
               'Request timeout - Server not responding for quick stats');
         },
       );
 
-      //print('Quick Stats Response status: ${response.statusCode}');
-      //print('Quick Stats Response body: ${response.body}');
-
       if (response.statusCode == 200) {
-        //print(token);
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] is Map<String, dynamic>) {
-          setState(() {
-            _quickStatsData = data['data']; // Update quick stats data
-          });
+          return Map<String, dynamic>.from(data['data']);
         } else {
-          // Handle cases where API returns success: false or data in unexpected format
-          _showSnackBar(
-              context,
-              data['message'] ??
-                  'Failed to load quick stats. Invalid data format.',
-              color: Colors.red);
-          // Only update relevant part, not entire map to 'N/A'
+          throw Exception(data['message'] ??
+              'Failed to load quick stats. Invalid data format.');
         }
       } else {
-        // Handle non-200 status codes
         final errorData = json.decode(response.body);
-        _showSnackBar(context,
-            errorData['message'] ?? 'Failed to load quick stats. Server error.',
-            color: Colors.red);
-        // Only update relevant part, not entire map to 'N/A'
+        throw Exception(errorData['message'] ??
+            'Failed to load quick stats. Server error.');
       }
-    } on SocketException catch (e) {
-      print('SocketException (Quick Stats): $e');
-      _showSnackBar(context,
-          'Network error while fetching quick stats. Check your internet connection.',
-          color: Colors.red);
-      // Only update relevant part, not entire map to 'N/A'
-    } on TimeoutException catch (e) {
-      print('TimeoutException (Quick Stats): $e');
-      _showSnackBar(
-          context, 'Quick stats request timed out. Server is not responding.',
-          color: Colors.red);
-      // Only update relevant part, not entire map to 'N/A'
-    } on FormatException catch (e) {
-      print('FormatException (Quick Stats): $e');
-      _showSnackBar(
-          context, 'Invalid response format for quick stats from server.',
-          color: Colors.red);
-      // Only update relevant part, not entire map to 'N/A'
+    } on SocketException {
+      throw Exception(
+          'Network error while fetching quick stats. Check your internet connection.');
+    } on TimeoutException {
+      throw Exception(
+          'Quick stats request timed out. Server is not responding.');
+    } on FormatException {
+      throw Exception('Invalid response format for quick stats from server.');
     } catch (e) {
-      print('General Exception (Quick Stats): $e');
-      _showSnackBar(context,
-          'An unexpected error occurred while fetching quick stats: ${e.toString()}',
-          color: Colors.red);
-      // Only update relevant part, not entire map to 'N/A'
-    } finally {
-      setState(() {
-        _quickStatsLoading =
-            false; // Always set loading to false after request completes
-      });
+      throw Exception(
+          'An unexpected error occurred while fetching quick stats: ${e.toString()}');
     }
   }
 
@@ -289,7 +230,6 @@ class _MobileSuperAdminDashboardScreenState
     );
   }
 
-  // Helper method to build a single statistic card
   // Helper method to build the main content of the Home dashboard,
   // including welcome message, date, and Singapore time, and quick stats.
   Widget _buildHomeContent() {
@@ -374,66 +314,86 @@ class _MobileSuperAdminDashboardScreenState
                   ],
                 ),
                 const SizedBox(height: 10),
-                // Quick Stats cards using Wrap, always rendered
-                Wrap(
-                  spacing: 10.0, // Horizontal spacing between cards
-                  runSpacing: 10.0, // Vertical spacing between rows of cards
-                  children: [
-                    _buildStatCard(
-                        context,
-                        'Total Users',
-                        _quickStatsData['totalUsers']?.toString() ?? 'N/A',
-                        Icons.people_alt, () {
-                      Navigator.pushNamed(context, '/mobile_users');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Total Reports',
-                        _quickStatsData['totalReports']?.toString() ?? 'N/A',
-                        Icons.assignment, () {
-                      Navigator.pushNamed(context, '/mobile_reports');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Solved Reports',
-                        _quickStatsData['solvedReports']?.toString() ?? 'N/A',
-                        Icons.check_circle_outline, () {
-                      Navigator.pushNamed(
-                          context, '/mobile_admin_solved_reports');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Unsolved Reports',
-                        _quickStatsData['unsolvedReports']?.toString() ?? 'N/A',
-                        Icons.pending_actions, () {
-                      Navigator.pushNamed(
-                          context, '/mobile_admin_unsolved_reports');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Total Products',
-                        _quickStatsData['totalProducts']?.toString() ?? 'N/A',
-                        Icons.category, () {
-                      Navigator.pushNamed(context, '/mobile_products');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Total Maintenance',
-                        _quickStatsData['totalMaintenance']?.toString() ??
-                            'N/A',
-                        Icons.build, () {
-                      Navigator.pushNamed(context, '/mobile_maintenance');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Customer Products',
-                        _quickStatsData['customerProducts']?.toString() ??
-                            'N/A',
-                        Icons.shopping_bag, () {
-                      Navigator.pushNamed(context, '/mobile_assigned_products');
-                    }),
-                    // The 'Config Warning Time' stat card has been removed as per previous request
-                  ],
+                // Quick Stats cards using FutureBuilder
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _quickStatsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (snapshot.hasData) {
+                      final quickStatsData = snapshot.data!;
+                      return Wrap(
+                        spacing: 10.0, // Horizontal spacing between cards
+                        runSpacing:
+                            10.0, // Vertical spacing between rows of cards
+                        children: [
+                          _buildStatCard(
+                              context,
+                              'Total Users',
+                              quickStatsData['totalUsers']?.toString() ?? 'N/A',
+                              Icons.people_alt, () {
+                            Navigator.pushNamed(context, '/mobile_users');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Total Reports',
+                              quickStatsData['totalReports']?.toString() ??
+                                  'N/A',
+                              Icons.assignment, () {
+                            Navigator.pushNamed(context, '/mobile_reports');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Solved Reports',
+                              quickStatsData['solvedReports']?.toString() ??
+                                  'N/A',
+                              Icons.check_circle_outline, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_admin_solved_reports');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Unsolved Reports',
+                              quickStatsData['unsolvedReports']?.toString() ??
+                                  'N/A',
+                              Icons.pending_actions, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_admin_unsolved_reports');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Total Products',
+                              quickStatsData['totalProducts']?.toString() ??
+                                  'N/A',
+                              Icons.category, () {
+                            Navigator.pushNamed(context, '/mobile_products');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Total Maintenance',
+                              quickStatsData['totalMaintenance']?.toString() ??
+                                  'N/A',
+                              Icons.build, () {
+                            Navigator.pushNamed(context, '/mobile_maintenance');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Customer Products',
+                              quickStatsData['customerProducts']?.toString() ??
+                                  'N/A',
+                              Icons.shopping_bag, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_assigned_products');
+                          }),
+                        ],
+                      );
+                    } else {
+                      return const Center(
+                          child: Text('No quick stats data available.'));
+                    }
+                  },
                 ),
                 const SizedBox(height: 20), // Spacing at the bottom
               ],
@@ -807,7 +767,12 @@ class _MobileSuperAdminDashboardScreenState
       ),
       body: RefreshIndicator(
         // Added RefreshIndicator here
-        onRefresh: _fetchQuickStats, // Call _fetchQuickStats when pulled down
+        onRefresh: () async {
+          // Re-fetch the data when the user pulls down to refresh
+          setState(() {
+            _quickStatsFuture = _fetchQuickStats();
+          });
+        },
         child: SingleChildScrollView(
           child: _widgetOptions.elementAt(
               _selectedIndex), // Display content based on selected index

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
+import 'package:intl/intl.dart';
 
 import '../../../utils/shared_prefs.dart';
 import '../../../utils/api_config.dart';
@@ -27,6 +28,7 @@ class _MobileMaintenancePlanScreenState
   bool _monthly = false;
   bool _quarterly = false;
   bool _annually = false;
+  DateTime? _maintenanceEndDate;
 
   void _showSnackBar(BuildContext context, String message,
       {Color color = Colors.black}) {
@@ -40,6 +42,20 @@ class _MobileMaintenancePlanScreenState
     );
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _maintenanceEndDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _maintenanceEndDate) {
+      setState(() {
+        _maintenanceEndDate = picked;
+      });
+    }
+  }
+
   Future<void> _createMaintenancePlan() async {
     final String? token = await SharedPrefs.getToken();
     if (token == null || token.isEmpty) {
@@ -51,6 +67,12 @@ class _MobileMaintenancePlanScreenState
 
     if (!_monthly && !_quarterly && !_annually) {
       _showSnackBar(context, 'Please select at least one maintenance type.',
+          color: Colors.orange);
+      return;
+    }
+
+    if (_maintenanceEndDate == null) {
+      _showSnackBar(context, 'Please select a maintenance end date.',
           color: Colors.orange);
       return;
     }
@@ -69,6 +91,7 @@ class _MobileMaintenancePlanScreenState
               'monthly': _monthly,
               'quarterly': _quarterly,
               'annually': _annually,
+              'maintenance_end_date': _maintenanceEndDate!.toIso8601String(),
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -155,6 +178,8 @@ class _MobileMaintenancePlanScreenState
                 });
               },
             ),
+            const SizedBox(height: 20),
+            _buildDatePickerTile(),
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: _createMaintenancePlan,
@@ -202,6 +227,22 @@ class _MobileMaintenancePlanScreenState
         onChanged: onChanged,
         controlAffinity: ListTileControlAffinity.leading,
         activeColor: Colors.blue,
+      ),
+    );
+  }
+
+  Widget _buildDatePickerTile() {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ListTile(
+        title: Text(
+          'Maintenance End Date: ${_maintenanceEndDate != null ? DateFormat('yyyy-MM-dd').format(_maintenanceEndDate!) : 'Select Date'}',
+          style: const TextStyle(fontSize: 16),
+        ),
+        trailing: const Icon(Icons.calendar_today),
+        onTap: () => _selectDate(context),
       ),
     );
   }

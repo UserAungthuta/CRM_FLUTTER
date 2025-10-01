@@ -75,6 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await SharedPrefs.saveUser(user, token);
         await SharedPrefs.saveToken(token);
 
+        await fetchandSaveQuickStats(user.role, token);
         _showSnackBar(
           'Login successful! Welcome ${user.fullname ?? user.username}',
           Colors.green[600]!,
@@ -150,6 +151,59 @@ class _LoginScreenState extends State<LoginScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  Future<void> fetchandSaveQuickStats(String? userRole, String token) async {
+    String? statsUrl;
+    String? prefsKey;
+
+    switch (userRole) {
+      case 'superadmin':
+      case 'admin':
+        statsUrl = '${ApiConfig.baseUrl}/quickstats/admin';
+        prefsKey = 'adminQuickStats';
+        break;
+      case 'engineer':
+        statsUrl = '${ApiConfig.baseUrl}/quickstats/engineer';
+        prefsKey = 'engineerQuickStats';
+        break;
+      case 'localcustomer':
+      case 'globalcustomer':
+        statsUrl = '${ApiConfig.baseUrl}/quickstats/customer';
+        prefsKey = 'customerQuickStats';
+        break;
+      default:
+        print('No specific quick stats endpoint for role: $userRole');
+        return; // Do nothing for other roles
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(statsUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = json.decode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          // Save the raw JSON string of the 'data' field to shared preferences
+          SharedPrefs.setString(prefsKey, json.encode(responseBody['data']));
+          print(
+              'Quick stats for $userRole saved to local storage under key "$prefsKey".');
+        } else {
+          print(
+              'Failed to load quick stats for $userRole: ${responseBody['message'] ?? 'Invalid data format.'}');
+        }
+      } else {
+        print(
+            'Failed to fetch quick stats for $userRole. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching or saving quick stats for $userRole: $e');
+    }
   }
 
   String? _validateEmail(String? value) {

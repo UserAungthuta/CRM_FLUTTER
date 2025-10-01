@@ -285,7 +285,7 @@ class _MobileProfileScreenState extends State<MobileProfileScreen> {
         requestBody['current_password'] = currentPassword;
         requestBody['new_password'] = newPassword; // This is the new password
       }
-      print(requestBody);
+      //print(requestBody);
       final response = await http
           .put(
             uri,

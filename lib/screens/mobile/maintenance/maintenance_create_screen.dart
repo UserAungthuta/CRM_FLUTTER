@@ -13,14 +13,14 @@ class MaintenanceCreateScreen extends StatefulWidget {
   final String generatorSerialNumber;
   final String plan_id;
   final String maintenanceType; // e.g., 'monthly', 'quarterly', 'annually'
-  final String? initialTitle; // Optional pre-filled title
+  //final String? initialTitle; // Optional pre-filled title
 
   const MaintenanceCreateScreen({
     super.key,
     required this.generatorSerialNumber,
     required this.maintenanceType,
     required this.plan_id,
-    this.initialTitle,
+    //this.initialTitle,
   });
 
   @override
@@ -46,7 +46,7 @@ class _MaintenanceCreateScreenState extends State<MaintenanceCreateScreen> {
     super.initState();
     _generatorSerialNumberController.text = widget.generatorSerialNumber;
     _planIDController.text = widget.plan_id;
-    _maintenanceTitleController.text = widget.initialTitle ?? '';
+    // _maintenanceTitleController.text = widget.initialTitle ?? '';
     // Removed date initialization
     // _maintenanceDateController.text = DateFormat('yyyy-MM-dd').format(DateTime.now()); // Default to today's date
     _reasonControllers
@@ -219,12 +219,12 @@ class _MaintenanceCreateScreenState extends State<MaintenanceCreateScreen> {
               TextFormField(
                 controller: _maintenanceTitleController,
                 decoration: const InputDecoration(
-                  labelText: 'Maintenance Title',
+                  labelText: 'Maintenance Description',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter maintenance title';
+                    return 'Please enter maintenance description';
                   }
                   return null;
                 },
@@ -242,14 +242,14 @@ class _MaintenanceCreateScreenState extends State<MaintenanceCreateScreen> {
                         child: TextFormField(
                           controller: controller,
                           decoration: InputDecoration(
-                            labelText: 'Maintenance Reason ${idx + 1}',
+                            labelText: 'Maintenance Checklist ${idx + 1}',
                             border: const OutlineInputBorder(),
                           ),
                           maxLines: null,
                           minLines: 1,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Reason cannot be empty';
+                              return 'checklist cannot be empty';
                             }
                             return null;
                           },

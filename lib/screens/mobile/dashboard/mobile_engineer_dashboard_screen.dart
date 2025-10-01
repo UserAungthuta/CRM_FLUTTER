@@ -21,16 +21,8 @@ class _MobileEngineerDashboardScreenState
     extends State<MobileEngineerDashboardScreen> {
   int _selectedIndex = 0; // State to manage the selected tab index
 
-  // State variables for Quick Stats data for an Engineer
-  Map<String, dynamic> _quickStatsData = {
-    'totalCustomers': 'N/A',
-    'totalReports': 'N/A',
-    'solvedReports': 'N/A',
-    'unsolvedReports': 'N/A',
-    'totalMaintenance': 'N/A',
-    'customerProducts': 'N/A',
-  };
-  bool _quickStatsLoading = true; // Still used internally for fetch logic
+  // Use a Future variable to hold the quick stats data
+  late Future<Map<String, dynamic>> _quickStatsFuture;
 
   // List of widgets for each tab in the BottomNavigationBar
   late final List<Widget> _widgetOptions;
@@ -38,14 +30,12 @@ class _MobileEngineerDashboardScreenState
   @override
   void initState() {
     super.initState();
+    _quickStatsFuture = _fetchQuickStats(); // Initialize the future
     _widgetOptions = <Widget>[
       _buildHomeContent(), // Index 0: Home (Engineer Quick Stats)
       _buildProductsContent(),
       _buildReportsContent(), // Index 1: Products (Assigned Products relevant to engineer)
-      //_buildPlaceholderContent(
-      //'Engineer Reports tab content coming soon!'), // Index 2: Reports
     ];
-    _fetchQuickStats(); // Call to fetch quick stats when the widget initializes
   }
 
   // Helper method to show a SnackBar message
@@ -76,7 +66,8 @@ class _MobileEngineerDashboardScreenState
     // Update snackbar messages for each specific tab
     switch (index) {
       case 0: // Home
-        _fetchQuickStats(); // Re-fetch quick stats for Home tab
+        _quickStatsFuture =
+            _fetchQuickStats(); // Re-fetch quick stats for Home tab
         break;
       case 1: // Products (Assigned Products relevant to engineer)
         _showSnackBar(
@@ -90,24 +81,15 @@ class _MobileEngineerDashboardScreenState
   }
 
   /// Fetches quick statistics data from the backend API for an Engineer.
-  Future<void> _fetchQuickStats() async {
-    setState(() {
-      _quickStatsLoading = true; // Set loading state to true
-    });
-
+  Future<Map<String, dynamic>> _fetchQuickStats() async {
     try {
       final String? token =
           await SharedPrefs.getToken(); // Retrieve authentication token
       final int? userId = await SharedPrefs.getUserId(); // Retrieve user ID
 
       if (token == null || token.isEmpty || userId == null) {
-        _showSnackBar(context,
-            'Authentication token or User ID missing. Please log in again.',
-            color: Colors.red);
-        setState(() {
-          _quickStatsLoading = false;
-        });
-        return;
+        throw Exception(
+            'Authentication token or User ID missing. Please log in again.');
       }
 
       final response = await http.get(
@@ -128,46 +110,27 @@ class _MobileEngineerDashboardScreenState
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] is Map<String, dynamic>) {
-          setState(() {
-            _quickStatsData = data['data']; // Update quick stats data
-          });
+          return Map<String, dynamic>.from(data['data']);
         } else {
-          _showSnackBar(
-              context,
-              data['message'] ??
-                  'Failed to load quick stats. Invalid data format.',
-              color: Colors.red);
+          throw Exception(data['message'] ??
+              'Failed to load quick stats. Invalid data format.');
         }
       } else {
         final errorData = json.decode(response.body);
-        _showSnackBar(context,
-            errorData['message'] ?? 'Failed to load quick stats. Server error.',
-            color: Colors.red);
+        throw Exception(errorData['message'] ??
+            'Failed to load quick stats. Server error.');
       }
-    } on SocketException catch (e) {
-      print('SocketException (Quick Stats): $e');
-      _showSnackBar(context,
-          'Network error while fetching quick stats. Check your internet connection.',
-          color: Colors.red);
-    } on TimeoutException catch (e) {
-      print('TimeoutException (Quick Stats): $e');
-      _showSnackBar(
-          context, 'Quick stats request timed out. Server is not responding.',
-          color: Colors.red);
-    } on FormatException catch (e) {
-      print('FormatException (Quick Stats): $e');
-      _showSnackBar(
-          context, 'Invalid response format for quick stats from server.',
-          color: Colors.red);
+    } on SocketException {
+      throw Exception(
+          'Network error while fetching quick stats. Check your internet connection.');
+    } on TimeoutException {
+      throw Exception(
+          'Quick stats request timed out. Server is not responding.');
+    } on FormatException {
+      throw Exception('Invalid response format for quick stats from server.');
     } catch (e) {
-      print('General Exception (Quick Stats): $e');
-      _showSnackBar(context,
-          'An unexpected error occurred while fetching quick stats: ${e.toString()}',
-          color: Colors.red);
-    } finally {
-      setState(() {
-        _quickStatsLoading = false; // Always set loading to false
-      });
+      throw Exception(
+          'An unexpected error occurred while fetching quick stats: ${e.toString()}');
     }
   }
 
@@ -281,62 +244,148 @@ class _MobileEngineerDashboardScreenState
                   ],
                 ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10.0,
-                  runSpacing: 10.0,
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _quickStatsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (snapshot.hasData) {
+                      final quickStatsData = snapshot.data!;
+                      return Wrap(
+                        spacing: 10.0,
+                        runSpacing: 10.0,
+                        children: [
+                          _buildStatCard(
+                              context,
+                              'Total Customers',
+                              quickStatsData['totalCustomers']?.toString() ??
+                                  'N/A',
+                              Icons.people_alt, () {
+                            _showSnackBar(
+                                context, 'Total Customers stat tapped!');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Total Reports',
+                              quickStatsData['totalReports']?.toString() ??
+                                  'N/A',
+                              Icons.assignment, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_engineer_reports');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Solved Reports',
+                              quickStatsData['solvedReports']?.toString() ??
+                                  'N/A',
+                              Icons.check_circle_outline, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_engineer_solved_reports');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Unsolved Reports',
+                              quickStatsData['unsolvedReports']?.toString() ??
+                                  'N/A',
+                              Icons.pending_actions, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_engineer_unsolved_reports');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Total Maintenance',
+                              quickStatsData['totalMaintenance']?.toString() ??
+                                  'N/A',
+                              Icons.build, () {
+                            Navigator.pushNamed(context, '/mobile_maintenance');
+                          }),
+                          _buildStatCard(
+                              context,
+                              'Customer Products',
+                              quickStatsData['customerProducts']?.toString() ??
+                                  'N/A',
+                              Icons.shopping_bag, () {
+                            Navigator.pushNamed(
+                                context, '/mobile_assigned_products');
+                          }),
+                        ],
+                      );
+                    } else {
+                      return const Center(
+                          child: Text('No quick stats data available.'));
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildProductsContent() {
+    return FutureBuilder<User?>(
+      future: SharedPrefs.getUser(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data == null) {
+          return const Center(
+              child: Text(
+                  'Please log in to access the dashboard.')); // More descriptive message
+        } else {
+          final user = snapshot.data!;
+          final DateTime nowUtc = DateTime.now().toUtc();
+          final DateTime singaporeTime = nowUtc.add(const Duration(hours: 8));
+
+          final String formattedDate =
+              '${singaporeTime.day.toString().padLeft(2, '0')}/${singaporeTime.month.toString().padLeft(2, '0')}/${singaporeTime.year}';
+          final String formattedTime =
+              '${singaporeTime.hour.toString().padLeft(2, '0')}:${singaporeTime.minute.toString().padLeft(2, '0')}';
+
+          return Padding(
+            padding: const EdgeInsets.all(20.0), // Padding around the content
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment.start, // Align content to the top
+              crossAxisAlignment:
+                  CrossAxisAlignment.stretch, // Make children take full width
+              children: [
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment
+                      .spaceBetween, // Align text left, icon right
                   children: [
-                    _buildStatCard(
-                        context,
-                        'Total Customers',
-                        _quickStatsData['totalCustomers']?.toString() ?? 'N/A',
-                        Icons.people_alt, () {
-                      // No direct navigation to a 'customers' list for engineer, maybe a filtered reports list
-                      _showSnackBar(context, 'Total Customers stat tapped!');
+                    Text(
+                      'Product Management',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10.0, // Horizontal spacing between cards
+                  runSpacing: 10.0, // Vertical spacing between rows of cards
+                  children: [
+                    _buildSettingCard(
+                        context, 'Assigned Products', Icons.shopping_bag, () {
+                      Navigator.pushNamed(context, '/mobile_assigned_products');
                     }),
-                    _buildStatCard(
-                        context,
-                        'Total Reports',
-                        _quickStatsData['totalReports']?.toString() ?? 'N/A',
-                        Icons.assignment, () {
-                      Navigator.pushNamed(context, '/mobile_engineer_reports');
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Solved Reports',
-                        _quickStatsData['solvedReports']?.toString() ?? 'N/A',
-                        Icons.check_circle_outline, () {
-                      Navigator.pushNamed(context,
-                          '/mobile_engineer_solved_reports'); // Can navigate to filtered reports
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Unsolved Reports',
-                        _quickStatsData['unsolvedReports']?.toString() ?? 'N/A',
-                        Icons.pending_actions, () {
-                      Navigator.pushNamed(context,
-                          '/mobile_engineer_unsolved_reports'); // Can navigate to filtered reports
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Total Maintenance',
-                        _quickStatsData['totalMaintenance']?.toString() ??
-                            'N/A',
-                        Icons.build, () {
-                      Navigator.pushNamed(context,
-                          '/mobile_maintenance'); // Assuming this is general maintenance
-                    }),
-                    _buildStatCard(
-                        context,
-                        'Customer Products',
-                        _quickStatsData['customerProducts']?.toString() ??
-                            'N/A',
-                        Icons.shopping_bag, () {
-                      Navigator.pushNamed(context,
-                          '/mobile_assigned_products'); // Engineer can see assigned products
+                    _buildSettingCard(
+                        context, 'Maintenance Products', Icons.build, () {
+                      Navigator.pushNamed(context, '/mobile_maintenance');
                     }),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 20), // Spacing at the bottom
               ],
             ),
           );
@@ -386,79 +435,6 @@ class _MobileEngineerDashboardScreenState
     );
   }
 
-  // Placeholder for engineer's products content (assigned products)
-  Widget _buildProductsContent() {
-    return FutureBuilder<User?>(
-      future: SharedPrefs.getUser(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data == null) {
-          return const Center(
-              child: Text(
-                  'Please log in to access the dashboard.')); // More descriptive message
-        } else {
-          final user = snapshot.data!;
-          // Calculate Singapore time (UTC+8)
-          final DateTime nowUtc = DateTime.now().toUtc();
-          final DateTime singaporeTime = nowUtc.add(const Duration(hours: 8));
-
-          // Format date and time manually (e.g., "DD/MM/YYYY HH:MM")
-          final String formattedDate =
-              '${singaporeTime.day.toString().padLeft(2, '0')}/${singaporeTime.month.toString().padLeft(2, '0')}/${singaporeTime.year}';
-          final String formattedTime =
-              '${singaporeTime.hour.toString().padLeft(2, '0')}:${singaporeTime.minute.toString().padLeft(2, '0')}';
-
-          return Padding(
-            padding: const EdgeInsets.all(20.0), // Padding around the content
-            child: Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.start, // Align content to the top
-              crossAxisAlignment:
-                  CrossAxisAlignment.stretch, // Make children take full width
-              children: [
-                const Row(
-                  // Removed the settings IconButton
-                  mainAxisAlignment: MainAxisAlignment
-                      .spaceBetween, // Align text left, icon right
-                  children: [
-                    Text(
-                      'Product Management',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87),
-                    ),
-                    // The IconButton for settings has been removed from here
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Quick Stats cards using Wrap, always rendered
-                Wrap(
-                  spacing: 10.0, // Horizontal spacing between cards
-                  runSpacing: 10.0, // Vertical spacing between rows of cards
-                  children: [
-                    _buildSettingCard(
-                        context, 'Assigned Products', Icons.shopping_bag, () {
-                      Navigator.pushNamed(context, '/mobile_assigned_products');
-                    }),
-                    _buildSettingCard(
-                        context, 'Maintenance Products', Icons.build, () {
-                      Navigator.pushNamed(context, '/mobile_maintenance');
-                    }),
-                  ],
-                ),
-                const SizedBox(height: 20), // Spacing at the bottom
-              ],
-            ),
-          );
-        }
-      },
-    );
-  }
-
   Widget _buildReportsContent() {
     return FutureBuilder<User?>(
       future: SharedPrefs.getUser(),
@@ -473,11 +449,9 @@ class _MobileEngineerDashboardScreenState
                   'Please log in to access the dashboard.')); // More descriptive message
         } else {
           final user = snapshot.data!;
-          // Calculate Singapore time (UTC+8)
           final DateTime nowUtc = DateTime.now().toUtc();
           final DateTime singaporeTime = nowUtc.add(const Duration(hours: 8));
 
-          // Format date and time manually (e.g., "DD/MM/YYYY HH:MM")
           final String formattedDate =
               '${singaporeTime.day.toString().padLeft(2, '0')}/${singaporeTime.month.toString().padLeft(2, '0')}/${singaporeTime.year}';
           final String formattedTime =
@@ -492,7 +466,6 @@ class _MobileEngineerDashboardScreenState
                   CrossAxisAlignment.stretch, // Make children take full width
               children: [
                 const Row(
-                  // Removed the settings IconButton
                   mainAxisAlignment: MainAxisAlignment
                       .spaceBetween, // Align text left, icon right
                   children: [
@@ -503,11 +476,9 @@ class _MobileEngineerDashboardScreenState
                           fontWeight: FontWeight.bold,
                           color: Colors.black87),
                     ),
-                    // The IconButton for settings has been removed from here
                   ],
                 ),
                 const SizedBox(height: 10),
-                // Quick Stats cards using Wrap, always rendered
                 Wrap(
                   spacing: 10.0, // Horizontal spacing between cards
                   runSpacing: 10.0, // Vertical spacing between rows of cards
@@ -587,7 +558,12 @@ class _MobileEngineerDashboardScreenState
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _fetchQuickStats,
+        onRefresh: () {
+          setState(() {
+            _quickStatsFuture = _fetchQuickStats();
+          });
+          return _quickStatsFuture.then((value) => value);
+        },
         child: SingleChildScrollView(
           child: _widgetOptions.elementAt(_selectedIndex),
         ),

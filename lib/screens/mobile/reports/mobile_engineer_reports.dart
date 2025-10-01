@@ -35,11 +35,14 @@ class _MobileEngineerReportScreenState
   final ImagePicker _picker = ImagePicker();
 
   bool _quickStatsLoading = false;
+  late Future<List<Map<String, String>>> _customersFuture;
+  String? _selectedCustomerId;
 
   @override
   void initState() {
     super.initState();
     _reportsFuture = _fetchReports();
+    _customersFuture = _fetchUsers(roles: ['localcustomer', 'globalcustomer']);
   }
 
   @override
@@ -59,7 +62,68 @@ class _MobileEngineerReportScreenState
     );
   }
 
-  Future<List<Map<String, String>>> _fetchReports() async {
+  Future<List<Map<String, String>>> _fetchUsers({List<String>? roles}) async {
+    try {
+      final String? token = await SharedPrefs.getToken();
+      if (token == null || token.isEmpty) {
+        _showSnackBar(
+            context, 'Authentication token missing. Please log in again.',
+            color: Colors.red);
+        return [];
+      }
+
+      final Uri uri = Uri.parse('${ApiConfig.baseUrl}/users/readall');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] is List) {
+          List<Map<String, String>> users = [];
+          for (var item in responseData['data']) {
+            if (item is Map<String, dynamic>) {
+              final userRole = item['role'] as String? ?? '';
+              if (roles == null || roles.contains(userRole)) {
+                users.add({
+                  'id': item['id']?.toString() ?? '',
+                  'username': item['username'] as String? ?? '',
+                  'role': userRole,
+                });
+              }
+            }
+          }
+          return users;
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
+    } on SocketException {
+      _showSnackBar(context, 'Network error. Check your internet connection.',
+          color: Colors.red);
+      return [];
+    } on TimeoutException {
+      _showSnackBar(context, 'Request timed out. Server not responding.',
+          color: Colors.red);
+      return [];
+    } on FormatException {
+      _showSnackBar(context, 'Invalid response format from server.',
+          color: Colors.red);
+      return [];
+    } catch (e) {
+      _showSnackBar(context, 'An unexpected error occurred: ${e.toString()}',
+          color: Colors.red);
+      return [];
+    }
+  }
+
+  Future<List<Map<String, String>>> _fetchReports({String? customerId}) async {
     try {
       final String? token = await SharedPrefs.getToken();
       final int? userId = await SharedPrefs.getUserId();
@@ -73,7 +137,14 @@ class _MobileEngineerReportScreenState
         return [];
       }
 
-      final Uri uri = Uri.parse('${ApiConfig.baseUrl}/reports/readall');
+      final Map<String, dynamic> queryParameters = {};
+      if (customerId != null && customerId.isNotEmpty) {
+        queryParameters['customer_id'] = customerId;
+      }
+
+      final Uri uri = Uri.parse('${ApiConfig.baseUrl}/reports/readall').replace(
+          queryParameters: queryParameters.isEmpty ? null : queryParameters);
+
       final response = await http.get(
         uri,
         headers: {
@@ -187,7 +258,7 @@ class _MobileEngineerReportScreenState
           _showSnackBar(context, 'Report picked up successfully!',
               color: Colors.green);
           setState(() {
-            _reportsFuture = _fetchReports();
+            _reportsFuture = _fetchReports(customerId: _selectedCustomerId);
           });
         }
       } else {
@@ -257,6 +328,61 @@ class _MobileEngineerReportScreenState
               ),
             ],
           ),
+        ),
+        FutureBuilder<List<Map<String, String>>>(
+          future: _customersFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: LinearProgressIndicator(),
+              );
+            } else if (snapshot.hasError) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text('Error loading customers: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red)),
+              );
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text('No customers available for filtering.'),
+              );
+            } else {
+              final customers = snapshot.data!;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _selectedCustomerId,
+                  decoration: const InputDecoration(
+                    labelText: 'Filter by Customer',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  hint: const Text('Select a Customer'),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All Customers'),
+                    ),
+                    ...customers.map((customer) {
+                      return DropdownMenuItem<String>(
+                        value: customer['id'],
+                        child: Text(customer['username']!),
+                      );
+                    }),
+                  ],
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedCustomerId = newValue;
+                      _reportsFuture =
+                          _fetchReports(customerId: _selectedCustomerId);
+                    });
+                  },
+                ),
+              );
+            }
+          },
         ),
         Expanded(
           child: FutureBuilder<List<Map<String, String>>>(

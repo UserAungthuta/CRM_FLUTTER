@@ -222,7 +222,7 @@ class _MaintenanceEditScreenState extends State<MaintenanceEditScreen> {
               TextFormField(
                 controller: _maintenanceTitleController,
                 decoration: const InputDecoration(
-                  labelText: 'Maintenance Title',
+                  labelText: 'Maintenance Description',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -236,7 +236,7 @@ class _MaintenanceEditScreenState extends State<MaintenanceEditScreen> {
               TextFormField(
                 controller: _maintenanceDescriptionController,
                 decoration: const InputDecoration(
-                  labelText: 'Maintenance Description',
+                  labelText: 'Maintenance Checklist',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
